@@ -1,102 +1,45 @@
-import uvicorn
-from fastapi import FastAPI, Depends
-from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse
+# backend/app/main.py
 
-from app.api import deps
-from app.api.endpoints import users, device
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.api.router import api_router  # Import Router tổng hợp từ router.py
 
-# -----------------------------------------------------------------------------
-# KHỞI TẠO ỨNG DỤNG
-# -----------------------------------------------------------------------------
-app = FastAPI(
-    title="Attendance System API",
-    docs_url=None,
-    redoc_url=None,
-    openapi_url=None
-)
-
-# -----------------------------------------------------------------------------
-# ĐĂNG KÝ ROUTER
-# -----------------------------------------------------------------------------
-app.include_router(users.router, prefix="/api/users", tags=["Users"])
-app.include_router(device.router, prefix="/api/device", tags=["Device"])
-
-# -----------------------------------------------------------------------------
-# CẤU HÌNH TÀI LIỆU (NATIVE OPENAPI CONFIGURATION)
-# -----------------------------------------------------------------------------
-
-@app.get("/docs", include_in_schema=False)
-async def get_swagger_documentation(username: str = Depends(deps.verify_admin_auth)):
+def get_application() -> FastAPI:
     """
-    Render giao diện Swagger UI sử dụng cấu hình Native.
-    
-    Lưu ý kỹ thuật:
-        - Không sử dụng CSS Injection tùy chỉnh.
-        - Sử dụng 'tryItOutEnabled': True để luôn mở form nhập liệu.
-        - Hệ quả: Nút 'Cancel' sẽ vẫn hiển thị theo mặc định của thư viện Swagger UI.
+    Nhà máy cho ứng dụng FastAPI với CORS, bộ định tuyến và cài đặt.
     """
-    return get_swagger_ui_html(
-        openapi_url="/openapi.json", 
-        title="Attendance API Docs",
-        swagger_ui_parameters={
-            "tryItOutEnabled": True,        # Tự động mở chế độ Execute
-            "defaultModelsExpandDepth": -1, # Ẩn phần Models ở cuối trang cho gọn
-            "displayRequestDuration": True  # Hiển thị thời gian phản hồi
-        }
+    application = FastAPI(
+        title=settings.PROJECT_NAME,
+        openapi_url=f"{settings.API_V1_STR}/openapi.json",
+        debug=settings.DEBUG, # Hiển thị lỗi chi tiết nếu đang debug
     )
 
-@app.get("/openapi.json", include_in_schema=False)
-async def get_open_api_endpoint(username: str = Depends(deps.verify_admin_auth)):
+    # Cấu hình CORS (Cho phép Frontend React/Flutter gọi vào)
+    if settings.BACKEND_CORS_ORIGINS:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
+    # Kết nối toàn bộ API Router vào App
+    application.include_router(api_router, prefix=settings.API_V1_STR)
+
+    return application
+
+app = get_application()
+
+# Root endpoint để test server sống hay chết
+@app.get("/")
+def root():
     """
-    Tạo và làm sạch cấu trúc OpenAPI (Schema Sanitization).
+    Endpoint kiểm tra sức khỏe cho trạng thái hệ thống và liên kết tài liệu.
     """
-    if app.openapi_schema:
-        return app.openapi_schema
-        
-    # 1. Sinh Schema gốc
-    openapi_schema = get_openapi(
-        title="Attendance System API",
-        version="1.0.0",
-        routes=app.routes,
-    )
-    
-    # 2. Xóa cấu hình Security Global
-    if "components" in openapi_schema and "securitySchemes" in openapi_schema["components"]:
-        del openapi_schema["components"]["securitySchemes"]
-    
-    if "security" in openapi_schema:
-        del openapi_schema["security"]
-
-    # 3. Duyệt và làm sạch từng Endpoint
-    paths = openapi_schema.get("paths", {})
-    params_to_hide = ["x-api-key", "api-key", "apikey"]
-
-    for path, methods in paths.items():
-        for method, operation in methods.items():
-            
-            # Xóa Security Requirements
-            if "security" in operation:
-                del operation["security"]
-            
-            # Lọc bỏ Parameter bị cấm
-            if "parameters" in operation:
-                operation["parameters"] = [
-                    param for param in operation["parameters"] 
-                    if param.get("name").lower() not in params_to_hide
-                ]
-
-    app.openapi_schema = openapi_schema
-    return JSONResponse(app.openapi_schema)
-
-# -----------------------------------------------------------------------------
-# ENTRY POINT
-# -----------------------------------------------------------------------------
-if __name__ == "__main__":
-    uvicorn.run(
-        "app.main:app", 
-        host="0.0.0.0", 
-        port=8000, 
-        reload=True
-    )
+    return {
+        "message": "Biometric Attendance System API is running",
+        "status": "ok",
+        "docs_url": "/docs"
+    }

@@ -1,24 +1,19 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, String, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 class User(Base):
+    """
+    Mô hình ORM cho người dùng với ID, ID lớp và tên đầy đủ.
+    """
     __tablename__ = "users"
 
-    user_id = Column(String(50), primary_key=True, index=True)
-    faculty_id = Column(String(50), ForeignKey("faculty.faculty_id"))
-    class_id = Column(String(50), ForeignKey("class.class_id"))
-    full_name = Column(String(100), nullable=False)
-
-    # Quan hệ ngược (Optional)
-    account = relationship("Account", back_populates="user", uselist=False)
-
-class Account(Base):
-    __tablename__ = "account"
-
-    username = Column(String(50), primary_key=True)
-    password = Column(String(255), nullable=False)
-    role = Column(Integer, nullable=False) # 0: Sv, 1: GV, 2: Admin
-    user_id = Column(String(50), ForeignKey("users.user_id"), unique=True)
-
-    user = relationship("User", back_populates="account")
+    user_id = Column(String(32), primary_key=True, index=True)
+    class_id = Column(String(20), ForeignKey("class.class_id"), nullable=True)
+    full_name = Column(Text, nullable=False)
+    
+    # Quan hệ sử dụng chuỗi để tránh import vòng
+    account = relationship("Account", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    student_profile = relationship("StudentProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    lecturer_profile = relationship("LecturerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    fingerprints = relationship("Fingerprint", back_populates="user")

@@ -1,10 +1,22 @@
+# Khung làm việc API REST bất đồng bộ
 fastapi==0.109.0
+# Máy chủ ASGI cho FastAPI
 uvicorn[standard]==0.27.0
+# ORM cho tương tác PostgreSQL bất đồng bộ
 sqlalchemy==2.0.25
+# Trình điều khiển PostgreSQL bất đồng bộ
 asyncpg==0.29.0
+# Thư viện xác thực dữ liệu
 pydantic==2.5.3
+# Bộ tải cài đặt từ tệp env
 pydantic-settings==2.1.0
+# Bộ tải tệp .env
 python-dotenv==1.0.1
+# JWT và mật mã cho xác thực
 python-jose[cryptography]==3.3.0
+# Thư viện băm mật khẩu
 passlib[bcrypt]==1.7.4
+# Xử lý biểu mẫu đa phần
 python-multipart==0.0.6
+# Thư viện khách HTTP
+httpx

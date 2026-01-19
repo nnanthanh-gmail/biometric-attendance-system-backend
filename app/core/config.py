@@ -1,21 +1,30 @@
 from pydantic_settings import BaseSettings
+from typing import List
 
 class Settings(BaseSettings):
-    # Chuỗi kết nối cơ sở dữ liệu
+    # URL kết nối PostgreSQL
     DATABASE_URL: str
     
-    # Khóa bí mật dùng làm mật khẩu đăng nhập cho Admin
+    # Khóa ký cho xác thực quản trị
     SECRET_KEY: str
     
-    # Khóa xác thực dành riêng cho thiết bị phần cứng (Raspberry Pi)
+    # Khóa API cho xác thực phần cứng
     HARDWARE_API_KEY: str
     
-    # Tên tài khoản đăng nhập Admin
+    # Tên người dùng quản trị mặc định
     ADMIN_USERNAME: str = "admin"
 
+    # Cài đặt ứng dụng
+    PROJECT_NAME: str = "Biometric Attendance System"
+    API_V1_STR: str = "/api"  # thay đổi từ "/api/v1" thành "/api"
+    DEBUG: bool = False
+    BACKEND_CORS_ORIGINS: List[str] = []
+
     class Config:
+        # Tải từ tệp .env
         env_file = ".env"
-        # Bỏ qua các biến thừa trong file .env để tránh lỗi validation
+        # Bỏ qua biến env bị thiếu
         extra = "ignore" 
 
+# Khởi tạo phiên bản singleton cho toàn bộ ứng dụng
 settings = Settings()
