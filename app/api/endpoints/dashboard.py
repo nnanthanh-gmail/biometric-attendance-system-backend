@@ -109,163 +109,224 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
     )
 
 @router.get("/attendance/user/{user_id}", response_model=List[UserAttendanceRecord])
-async def get_user_attendance_history(user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_user_attendance_history(
+    user_id: str,
+    start_date: Optional[date] = Query(None, description="Ngày bắt đầu lọc"),
+    end_date: Optional[date] = Query(None, description="Ngày kết thúc lọc"),
+    db: AsyncSession = Depends(get_db)
+):
     """
     API endpoint lấy lịch sử điểm danh đầy đủ của người dùng.
 
-    Bao gồm thông tin lớp học, môn học và phòng học từ đăng ký khóa học.
+    Bao gồm thông tin lớp học, môn học và phòng học từ lịch trình.
+    Hỗ trợ lọc theo khoảng thời gian.
 
     Args:
         user_id: ID người dùng
+        start_date: Ngày bắt đầu (optional)
+        end_date: Ngày kết thúc (optional)
         db: Session database async
 
     Returns:
         List[UserAttendanceRecord]: Danh sách bản ghi điểm danh với thông tin chi tiết
     """
-    # Query lấy attendance với thông tin course registration
+    # Sửa join: Attendance -> Schedule -> Subject, Room, ClassModel
+    # Loại bỏ join với CourseRegistration vì không cần thiết cho lịch sử điểm danh
     query = select(
-        Attendance.attendance_id,
-        Attendance.time,
+        Attendance.attend_id,
+        Attendance.attend_time,
         Attendance.status,
         ClassModel.class_name,
         Subject.subject_name,
         Room.room_name
     ).select_from(Attendance).join(
-        CourseRegistration, Attendance.user_id == CourseRegistration.user_id
+        Schedule, Attendance.schedule_id == Schedule.schedule_id
     ).join(
-        ClassModel, CourseRegistration.host_class_id == ClassModel.class_id
+        ClassModel, Schedule.class_id == ClassModel.class_id
     ).join(
-        Subject, CourseRegistration.subject_id == Subject.subject_id
+        Subject, Schedule.subject_id == Subject.subject_id
     ).outerjoin(
-        Room, Attendance.room_id == Room.room_id
-    ).where(Attendance.user_id == user_id).order_by(Attendance.time.desc())
+        Room, Schedule.room_id == Room.room_id
+    ).where(Attendance.user_id == user_id)
+
+    # Thêm filter thời gian nếu có
+    if start_date:
+        query = query.where(func.date(Attendance.attend_time) >= start_date)
+    if end_date:
+        query = query.where(func.date(Attendance.attend_time) <= end_date)
+
+    query = query.order_by(Attendance.attend_time.desc())
 
     result = await db.execute(query)
     records = result.all()
 
     return [
         UserAttendanceRecord(
-            attendance_id=record.attendance_id,
-            time=record.time,
+            attendance_id=str(record.attend_id),
+            time=record.attend_time,
             class_name=record.class_name,
             subject_name=record.subject_name,
             room_name=record.room_name,
-            status=record.status
+            status="Có mặt" if record.status else "Vắng mặt"
         ) for record in records
     ]
 
-@router.get("/search", response_model=List[SearchResult])
-async def search_schedules(
-    faculty_id: Optional[str] = Query(None, description="ID khoa để lọc"),
-    schedule_date: Optional[date] = Query(None, description="Ngày lịch học"),
-    major_id: Optional[str] = Query(None, description="ID ngành để lọc"),
-    education_level_id: Optional[str] = Query(None, description="ID bậc đào tạo để lọc"),
+@router.get("/search")
+async def search_entities(
+    q: str = Query(..., description="Từ khóa tìm kiếm"),
+    entity_type: str = Query(..., description="Loại thực thể: users, students, lecturers, classes, subjects"),
+    limit: Optional[int] = Query(50, description="Số lượng kết quả tối đa"),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    API endpoint tìm kiếm lịch học với bộ lọc đa tiêu chí.
+    API endpoint tìm kiếm tổng hợp theo từ khóa trong các thực thể.
 
-    Hỗ trợ lọc theo khoa, ngày, ngành và bậc đào tạo.
+    Hỗ trợ tìm kiếm không phân biệt chữ hoa/thường với ILIKE.
 
     Args:
-        faculty_id: ID khoa (tùy chọn)
-        schedule_date: Ngày lịch học (tùy chọn)
-        major_id: ID ngành (tùy chọn)
-        education_level_id: ID bậc đào tạo (tùy chọn)
+        q: Từ khóa tìm kiếm
+        entity_type: Loại thực thể cần tìm
+        limit: Số lượng kết quả tối đa (mặc định 50)
         db: Session database async
 
     Returns:
-        List[SearchResult]: Danh sách lịch học phù hợp với bộ lọc
+        List: Danh sách kết quả tìm kiếm
     """
-    # Import thêm models cần thiết
-    from app.models import Faculty, Major, EducationLevel
+    if entity_type == "users":
+        # Tìm kiếm trong bảng users
+        query = select(User).where(
+            or_(
+                User.user_id.ilike(f"%{q}%"),
+                User.full_name.ilike(f"%{q}%")
+            )
+        ).limit(limit)
+        result = await db.execute(query)
+        users = result.scalars().all()
+        return [
+            {
+                "id": user.user_id,
+                "name": user.full_name,
+                "type": "user"
+            } for user in users
+        ]
 
-    # Xây dựng query với joins
-    query = select(
-        Schedule.schedule_id,
-        Schedule.date,
-        Schedule.start_time,
-        Schedule.end_time,
-        Faculty.faculty_name,
-        Major.major_name,
-        EducationLevel.level_name,
-        ClassModel.class_name,
-        Subject.subject_name,
-        Room.room_name
-    ).select_from(Schedule).join(
-        ClassModel, Schedule.class_id == ClassModel.class_id
-    ).join(
-        Subject, Schedule.subject_id == Subject.subject_id
-    ).outerjoin(
-        Room, Schedule.room_id == Room.room_id
-    ).outerjoin(
-        Faculty, ClassModel.faculty_id == Faculty.faculty_id
-    ).outerjoin(
-        Major, ClassModel.major_id == Major.major_id
-    ).outerjoin(
-        EducationLevel, ClassModel.education_level_id == EducationLevel.level_id
-    )
+    elif entity_type == "students":
+        # Tìm kiếm trong student profiles với join User
+        # Loại bỏ student_code vì không tồn tại trong schema
+        query = select(StudentProfile, User.full_name).join(User, StudentProfile.user_id == User.user_id).where(
+            or_(
+                StudentProfile.user_id.ilike(f"%{q}%"),
+                User.full_name.ilike(f"%{q}%")
+            )
+        ).limit(limit)
+        result = await db.execute(query)
+        students = result.all()
+        return [
+            {
+                "id": student.user_id,
+                "name": name,
+                "type": "student"
+            } for student, name in students
+        ]
 
-    # Áp dụng filters
-    if faculty_id:
-        query = query.where(ClassModel.faculty_id == faculty_id)
-    if schedule_date:
-        query = query.where(Schedule.date == schedule_date)
-    if major_id:
-        query = query.where(ClassModel.major_id == major_id)
-    if education_level_id:
-        query = query.where(ClassModel.education_level_id == education_level_id)
+    elif entity_type == "lecturers":
+        # Tìm kiếm trong lecturer profiles với join User
+        # Loại bỏ lecturer_code vì không tồn tại trong schema
+        query = select(LecturerProfile, User.full_name).join(User, LecturerProfile.user_id == User.user_id).where(
+            or_(
+                LecturerProfile.user_id.ilike(f"%{q}%"),
+                User.full_name.ilike(f"%{q}%")
+            )
+        ).limit(limit)
+        result = await db.execute(query)
+        lecturers = result.all()
+        return [
+            {
+                "id": lecturer.user_id,
+                "name": name,
+                "type": "lecturer"
+            } for lecturer, name in lecturers
+        ]
 
-    query = query.order_by(Schedule.date.desc(), Schedule.start_time.desc())
+    elif entity_type == "classes":
+        # Tìm kiếm trong classes
+        query = select(ClassModel).where(
+            or_(
+                ClassModel.class_id.ilike(f"%{q}%"),
+                ClassModel.class_name.ilike(f"%{q}%")
+            )
+        ).limit(limit)
+        result = await db.execute(query)
+        classes = result.scalars().all()
+        return [
+            {
+                "id": cls.class_id,
+                "name": cls.class_name,
+                "type": "class"
+            } for cls in classes
+        ]
 
-    result = await db.execute(query)
-    records = result.all()
+    elif entity_type == "subjects":
+        # Tìm kiếm trong subjects
+        # Loại bỏ subject_code vì không tồn tại trong schema
+        query = select(Subject).where(
+            or_(
+                Subject.subject_id.ilike(f"%{q}%"),
+                Subject.subject_name.ilike(f"%{q}%")
+            )
+        ).limit(limit)
+        result = await db.execute(query)
+        subjects = result.scalars().all()
+        return [
+            {
+                "id": subject.subject_id,
+                "name": subject.subject_name,
+                "type": "subject"
+            } for subject in subjects
+        ]
 
-    return [
-        SearchResult(
-            schedule_id=record.schedule_id,
-            date=record.date,
-            start_time=str(record.start_time),
-            end_time=str(record.end_time),
-            faculty_name=record.faculty_name,
-            major_name=record.major_name,
-            education_level_name=record.level_name,
-            class_name=record.class_name,
-            subject_name=record.subject_name,
-            room_name=record.room_name
-        ) for record in records
-    ]
+    # Nếu entity_type không hợp lệ
+    return []
 
 @router.get("/attendance/summary", response_model=List[AttendanceSummary])
 async def get_attendance_summary(
     start_date: date = Query(..., description="Ngày bắt đầu"),
     end_date: date = Query(..., description="Ngày kết thúc"),
-    class_id: Optional[str] = None,
+    class_id: Optional[str] = Query(None, description="ID lớp học (optional)"),
+    lecturer_id: Optional[str] = Query(None, description="ID giảng viên (optional)"),
+    subject_id: Optional[str] = Query(None, description="ID môn học (optional)"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Lấy tóm tắt điểm danh theo khoảng thời gian."""
-    # Query phức tạp để tính attendance rate theo ngày
+    """Lấy tóm tắt điểm danh theo khoảng thời gian, lọc theo lớp, giảng viên, môn học."""
+    # Sửa query: join schedule với course_registration và attendance
+    # Thêm filter lecturer_id, subject_id để lọc "của ai" (giảng viên), "môn nào" (subject)
     query = text("""
         SELECT
-            DATE(a.time) as date,
+            s.learn_date as date,
             COUNT(DISTINCT cr.user_id) as total_registered,
             COUNT(DISTINCT a.user_id) as present,
             ROUND(
-                (COUNT(DISTINCT a.user_id) * 100.0 / COUNT(DISTINCT cr.user_id)),
+                (COUNT(DISTINCT a.user_id) * 100.0 / NULLIF(COUNT(DISTINCT cr.user_id), 0)),
                 2
             ) as attendance_rate
-        FROM course_registration cr
-        LEFT JOIN attendance a ON cr.user_id = a.user_id
-            AND DATE(a.time) = DATE(cr.created_at)
-        WHERE DATE(cr.created_at) BETWEEN :start_date AND :end_date
-        """ + (" AND cr.class_id = :class_id" if class_id else "") + """
-        GROUP BY DATE(a.time)
-        ORDER BY date
+        FROM schedule s
+        LEFT JOIN course_registration cr ON s.class_id = cr.host_class_id AND s.subject_id = cr.subject_id
+        LEFT JOIN attendance a ON s.schedule_id = a.schedule_id
+        WHERE s.learn_date BETWEEN :start_date AND :end_date
+        """ + (" AND s.class_id = :class_id" if class_id else "") + """
+        """ + (" AND s.lecturer_id = :lecturer_id" if lecturer_id else "") + """
+        """ + (" AND s.subject_id = :subject_id" if subject_id else "") + """
+        GROUP BY s.learn_date
+        ORDER BY s.learn_date
     """)
 
     params = {"start_date": start_date, "end_date": end_date}
     if class_id:
         params["class_id"] = class_id
+    if lecturer_id:
+        params["lecturer_id"] = lecturer_id
+    if subject_id:
+        params["subject_id"] = subject_id
 
     result = await db.execute(query, params)
     rows = result.fetchall()
@@ -283,22 +344,23 @@ async def get_attendance_summary(
 
     return summary
 
-@router.get("/attendance/user/{user_id}")
-async def get_user_attendance(
+@router.get("/attendance/raw/user/{user_id}")
+async def get_user_attendance_raw(
     user_id: str,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Lấy lịch sử điểm danh của một user."""
+    """Lấy lịch sử điểm danh thô của một user."""
+    # Sửa Attendance.time thành Attendance.attend_time
     query = select(Attendance).where(Attendance.user_id == user_id)
 
     if start_date:
-        query = query.where(func.date(Attendance.time) >= start_date)
+        query = query.where(func.date(Attendance.attend_time) >= start_date)
     if end_date:
-        query = query.where(func.date(Attendance.time) <= end_date)
+        query = query.where(func.date(Attendance.attend_time) <= end_date)
 
-    query = query.order_by(Attendance.time.desc())
+    query = query.order_by(Attendance.attend_time.desc())
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -344,71 +406,3 @@ async def get_schedules_calendar(
         })
 
     return calendar_events
-
-@router.get("/search")
-async def search_entities(
-    q: str = Query(..., description="Từ khóa tìm kiếm"),
-    entity_type: str = Query(..., description="Loại entity: users, students, lecturers, classes, subjects"),
-    limit: Optional[int] = None,
-    db: AsyncSession = Depends(get_db)
-):
-    """API tìm kiếm tổng hợp."""
-    if entity_type == "users":
-        query = select(User).where(
-            or_(
-                User.user_id.ilike(f"%{q}%"),
-                User.full_name.ilike(f"%{q}%")
-            )
-        )
-        if limit:
-            query = query.limit(limit)
-        result = await db.execute(query)
-        return result.scalars().all()
-
-    elif entity_type == "students":
-        query = select(StudentProfile).where(
-            or_(
-                StudentProfile.user_id.ilike(f"%{q}%"),
-                StudentProfile.full_name.ilike(f"%{q}%")
-            )
-        )
-        if limit:
-            query = query.limit(limit)
-        result = await db.execute(query)
-        return result.scalars().all()
-
-    elif entity_type == "lecturers":
-        query = select(LecturerProfile).where(
-            or_(
-                LecturerProfile.user_id.ilike(f"%{q}%"),
-                LecturerProfile.full_name.ilike(f"%{q}%")
-            )
-        )
-        if limit:
-            query = query.limit(limit)
-        result = await db.execute(query)
-        return result.scalars().all()
-
-    elif entity_type == "classes":
-        query = select(ClassModel).where(
-            ClassModel.class_id.ilike(f"%{q}%")
-        )
-        if limit:
-            query = query.limit(limit)
-        result = await db.execute(query)
-        return result.scalars().all()
-
-    elif entity_type == "subjects":
-        from app.models import Subject
-        query = select(Subject).where(
-            or_(
-                Subject.subject_id.ilike(f"%{q}%"),
-                Subject.subject_name.ilike(f"%{q}%")
-            )
-        )
-        if limit:
-            query = query.limit(limit)
-        result = await db.execute(query)
-        return result.scalars().all()
-
-    return []
