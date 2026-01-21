@@ -12,4 +12,4 @@ class EducationLevelResponse(EducationLevelBase):
     Lược đồ phản hồi cấp độ giáo dục.
     """
     class Config:
-        orm_mode = True
+        from_attributes = True

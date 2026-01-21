@@ -12,5 +12,6 @@ class LecturerProfile(Base):
     faculty_id = Column(String(20), ForeignKey("faculty.faculty_id"), nullable=False)
     degree = Column(Text, nullable=False)
     research_area = Column(Text, nullable=True)
+    profile_image_url = Column(Text, nullable=True)
 
     user = relationship("User", back_populates="lecturer_profile")

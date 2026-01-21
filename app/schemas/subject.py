@@ -22,4 +22,4 @@ class SubjectResponse(SubjectBase):
     Lược đồ phản hồi môn học.
     """
     class Config:
-        orm_mode = True
+        from_attributes = True

@@ -1,5 +1,82 @@
+# =================================================================
+# CẤU HÌNH PYTHON VÀ MÔI TRƯỜNG ẢO
+# =================================================================
+# Thư mục cache bytecode Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+# File bytecode compiled
+*.py[cod]
+# File class Python (nếu có)
+*$py.class
+# Thư viện chia sẻ compiled
+*.so
+# Thư mục Python build
+.Python
+# Thư mục môi trường ảo
+venv/
+env/
+ENV/
+
+# =================================================================
+# BIẾN MÔI TRƯỜNG VÀ CẤU HÌNH BẢO MẬT
+# =================================================================
+# File biến môi trường chứa secrets
 .env
+.env.local
+.env.production
+
+# =================================================================
+# CƠ SỞ DỮ LIỆU VÀ DỮ LIỆU TẠM THỜI
+# =================================================================
+# File database SQLite
+*.db
+*.sqlite3
+# File database PostgreSQL dump
+*.sql
+
+# =================================================================
+# IDE VÀ CÔNG CỤ PHÁT TRIỂN
+# =================================================================
+# Thư mục VS Code
+.vscode/
+# Thư mục PyCharm/IntelliJ
+.idea/
+# File swap Vim
+*.swp
+*.swo
+
+# =================================================================
+# LOGS VÀ DỮ LIỆU THEO DÕI
+# =================================================================
+# File log ứng dụng
+*.log
+# Thư mục logs
+logs/
+
+# =================================================================
+# HỆ ĐIỀU HÀNH VÀ FILE HỆ THỐNG
+# =================================================================
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+# Linux temp files
+*~
+
+# =================================================================
+# UPLOADS VÀ DỮ LIỆU NGƯỜI DÙNG
+# =================================================================
+# Thư mục uploads (ảnh profile, vân tay)
+uploads/
+# File tạm thời
+tmp/
+temp/
+
+# =================================================================
+# BẢO MẬT VÀ SENSITIVE DATA
+# =================================================================
+# Keys và certificates
+*.key
+*.pem
+*.crt
+# File cấu hình bảo mật
+secrets.json

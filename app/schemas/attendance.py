@@ -8,7 +8,7 @@ class AttendanceBase(BaseModel):
     schedule_id: int
     user_id: str
     status: bool
-    attend_time: datetime
+    time: datetime
 
 class AttendanceCreate(AttendanceBase):
     """
@@ -20,7 +20,7 @@ class AttendanceResponse(AttendanceBase):
     """
     Lược đồ phản hồi điểm danh với ID.
     """
-    attend_id: int
+    id: int
     
     class Config:
-        orm_mode = True
+        from_attributes = True

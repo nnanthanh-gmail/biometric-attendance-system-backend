@@ -13,7 +13,7 @@ class ScheduleBase(BaseModel):
     learn_date: date
     start_period: int
     end_period: int
-    is_open: Optional[bool] = True
+    is_open: Optional[bool] = False
 
 class ScheduleCreate(ScheduleBase):
     """
@@ -28,4 +28,4 @@ class ScheduleResponse(ScheduleBase):
     schedule_id: int  # ID tự tăng chỉ trong phản hồi
     
     class Config:
-        orm_mode = True
+        from_attributes = True

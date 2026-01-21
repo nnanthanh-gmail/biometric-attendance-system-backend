@@ -22,4 +22,4 @@ class ClassResponse(ClassBase):
     Lược đồ phản hồi lớp.
     """
     class Config:
-        orm_mode = True
+        from_attributes = True

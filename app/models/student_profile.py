@@ -10,8 +10,9 @@ class StudentProfile(Base):
 
     user_id = Column(String(32), ForeignKey("users.user_id"), primary_key=True)
     birth_date = Column(Date, nullable=False)
-    gender = Column(Boolean, nullable=False)
+    is_female = Column(Boolean, nullable=False, default=False)
     phone = Column(String(15), nullable=False)
     address = Column(Text, nullable=False)
+    profile_image_url = Column(Text, nullable=True)
 
     user = relationship("User", back_populates="student_profile")

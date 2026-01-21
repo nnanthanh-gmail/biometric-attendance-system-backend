@@ -9,6 +9,7 @@ class LecturerProfileBase(BaseModel):
     faculty_id: str
     degree: str
     research_area: Optional[str] = None
+    profile_image_url: Optional[str] = None
 
 class LecturerProfileCreate(LecturerProfileBase):
     """
@@ -21,4 +22,4 @@ class LecturerProfileResponse(LecturerProfileBase):
     Lược đồ phản hồi hồ sơ giảng viên.
     """
     class Config:
-        orm_mode = True
+        from_attributes = True

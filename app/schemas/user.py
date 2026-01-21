@@ -17,10 +17,19 @@ class UserCreate(UserBase):
     """
     pass
 
+# Update: Dùng khi cập nhật (Input) - user_id là optional
+class UserUpdate(BaseModel):
+    """
+    Lược đồ cập nhật người dùng.
+    """
+    user_id: Optional[str] = None
+    class_id: Optional[str] = None
+    full_name: Optional[str] = None
+
 # Response: Dùng khi trả về Client (Output)
 class UserResponse(UserBase):
     """
     Lược đồ phản hồi người dùng.
     """
     class Config:
-        orm_mode = True  # Cho phép đọc dữ liệu từ đối tượng SQLAlchemy
+        from_attributes = True  # Cho phép đọc dữ liệu từ đối tượng SQLAlchemy

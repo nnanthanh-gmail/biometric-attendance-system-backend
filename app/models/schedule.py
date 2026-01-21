@@ -15,4 +15,4 @@ class Schedule(Base):
     learn_date = Column(Date, nullable=False)
     start_period = Column(SmallInteger, nullable=False)
     end_period = Column(SmallInteger, nullable=False)
-    is_open = Column(Boolean, default=True)
+    is_open = Column(Boolean, default=False)

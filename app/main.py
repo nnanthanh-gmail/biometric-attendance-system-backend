@@ -1,21 +1,31 @@
-# backend/app/main.py
+"""
+Module khởi tạo ứng dụng chính FastAPI.
+
+Thiết lập ứng dụng với middleware CORS, định tuyến API và phục vụ file tĩnh.
+"""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
-from app.api.router import api_router  # Import Router tổng hợp từ router.py
+from app.api.router import api_router
 
 def get_application() -> FastAPI:
     """
-    Nhà máy cho ứng dụng FastAPI với CORS, bộ định tuyến và cài đặt.
+    Factory function tạo instance FastAPI với cấu hình đầy đủ.
+
+    Thiết lập CORS cho frontend, tích hợp router API và mount thư mục uploads.
+
+    Returns:
+        FastAPI: Instance ứng dụng đã cấu hình
     """
     application = FastAPI(
         title=settings.PROJECT_NAME,
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
-        debug=settings.DEBUG, # Hiển thị lỗi chi tiết nếu đang debug
+        debug=settings.DEBUG,
     )
 
-    # Cấu hình CORS (Cho phép Frontend React/Flutter gọi vào)
+    # Middleware CORS cho cross-origin requests từ frontend
     if settings.BACKEND_CORS_ORIGINS:
         application.add_middleware(
             CORSMiddleware,
@@ -25,21 +35,27 @@ def get_application() -> FastAPI:
             allow_headers=["*"],
         )
 
-    # Kết nối toàn bộ API Router vào App
+    # Đăng ký tất cả API endpoints
     application.include_router(api_router, prefix=settings.API_V1_STR)
+
+    # Phục vụ file tĩnh cho uploads
+    application.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
     return application
 
+# Instance ứng dụng singleton
 app = get_application()
 
-# Root endpoint để test server sống hay chết
 @app.get("/")
-def root():
+def health_check():
     """
-    Endpoint kiểm tra sức khỏe cho trạng thái hệ thống và liên kết tài liệu.
+    Endpoint health check cho monitoring hệ thống.
+
+    Returns:
+        dict: Thông tin trạng thái và link documentation
     """
     return {
-        "message": "Biometric Attendance System API is running",
+        "message": "Biometric Attendance System API đang chạy",
         "status": "ok",
         "docs_url": "/docs"
     }

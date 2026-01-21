@@ -7,9 +7,10 @@ class StudentProfileBase(BaseModel):
     """
     user_id: str
     birth_date: date
-    gender: bool
+    is_female: bool = False
     phone: str
     address: str
+    profile_image_url: str | None = None
 
 class StudentProfileCreate(StudentProfileBase):
     """
@@ -22,4 +23,4 @@ class StudentProfileResponse(StudentProfileBase):
     Lược đồ phản hồi hồ sơ sinh viên.
     """
     class Config:
-        orm_mode = True
+        from_attributes = True

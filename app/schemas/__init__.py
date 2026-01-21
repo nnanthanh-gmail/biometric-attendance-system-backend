@@ -1,8 +1,8 @@
 """
 Lược đồ Pydantic cho xác thực yêu cầu/phản hồi API.
 """
-from .user import UserBase, UserCreate, UserResponse
-from .account import AccountBase, AccountCreate, AccountResponse
+from .user import UserBase, UserCreate, UserResponse, UserUpdate
+from .account import AccountBase, AccountCreate, AccountResponse, LoginRequest, TokenResponse
 from .student_profile import StudentProfileBase, StudentProfileCreate, StudentProfileResponse
 from .lecturer_profile import LecturerProfileBase, LecturerProfileCreate, LecturerProfileResponse
 from .fingerprint import FingerprintBase, FingerprintCreate, FingerprintResponse

@@ -17,4 +17,4 @@ async def device_checkin(
     """
     Endpoint cho check-in thiết bị phần cứng với xác thực hỗn hợp.
     """
-    return {"status": "success", "message": "Device authenticated successfully"}
+    return {"status": "success", "message": "Thiết bị đã được xác thực thành công"}

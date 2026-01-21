@@ -18,4 +18,4 @@ class FacultyResponse(FacultyBase):
     Lược đồ phản hồi khoa.
     """
     class Config:
-        orm_mode = True
+        from_attributes = True

@@ -19,4 +19,4 @@ class FingerprintResponse(FingerprintBase):
     Lược đồ phản hồi vân tay.
     """
     class Config:
-        orm_mode = True
+        from_attributes = True

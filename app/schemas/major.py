@@ -19,4 +19,4 @@ class MajorResponse(MajorBase):
     Lược đồ phản hồi chuyên ngành.
     """
     class Config:
-        orm_mode = True
+        from_attributes = True
