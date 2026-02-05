@@ -4,15 +4,18 @@ from sqlalchemy import select, update, delete
 from typing import Optional
 from app.api import deps
 from app.db.session import get_db
-from app.models import User
+from app.models import User, Account
 from app.schemas import UserCreate, UserResponse, UserBase, UserUpdate
 
 router = APIRouter()
 
 @router.get("/", response_model=list[UserBase])
-async def read_users(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+async def read_users(skip: int = 0, limit: Optional[int] = None, role: Optional[str] = None, db: AsyncSession = Depends(get_db)):
     """Lấy danh sách người dùng với phân trang."""
-    query = select(User).order_by(User.user_id.asc()).offset(skip)
+    if role:
+        query = select(User).join(Account).where(Account.role == role).order_by(User.user_id.asc()).offset(skip)
+    else:
+        query = select(User).order_by(User.user_id.asc()).offset(skip)
     if limit is not None:
         query = query.limit(limit)
     result = await db.execute(query)

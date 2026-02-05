@@ -204,27 +204,6 @@ async def delete_account(user_id: str, db: AsyncSession = Depends(get_db), _: st
     await db.commit()
     return {"message": f"Account {user_id} đã xóa thành công"}
 
-@router.get("/me", response_model=UserResponse)
-async def read_current_user(current_user: dict = Depends(deps.get_current_user), db: AsyncSession = Depends(get_db)):
-    """
-    Lấy thông tin profile user hiện tại.
-
-    Args:
-        current_user: User hiện tại từ JWT token
-        db: Database session
-
-    Returns:
-        User profile object
-
-    Raises:
-        HTTPException: Nếu user không tồn tại
-    """
-    result = await db.execute(select(User).where(User.user_id == current_user["user_id"]))
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User không tồn tại")
-    return user
-
 @router.post("/login", response_model=TokenResponse)
 async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
     """
@@ -254,40 +233,3 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
     access_token = deps.create_access_token(data={"sub": account.user_id, "role": account.role})
 
     return TokenResponse(access_token=access_token, user_id=account.user_id, role=account.role)
-
-@router.put("/change-password")
-async def change_password(old_password: str, new_password: str, current_user: dict = Depends(deps.get_current_user), db: AsyncSession = Depends(get_db)):
-    """
-    Đổi password của user hiện tại.
-
-    Args:
-        old_password: Password cũ để verify
-        new_password: Password mới
-        current_user: User hiện tại từ JWT token
-        db: Database session
-
-    Returns:
-        Thông báo thành công
-
-    Raises:
-        HTTPException: Nếu old password sai hoặc update thất bại
-    """
-    # Lấy account
-    result = await db.execute(select(Account).where(Account.user_id == current_user["user_id"]))
-    account = result.scalars().first()
-    if not account:
-        raise HTTPException(status_code=404, detail="Account không tồn tại")
-
-    # Verify old password
-    if not deps.verify_password(old_password, account.password_hash):
-        raise HTTPException(status_code=400, detail="Old password không chính xác")
-
-    # Hash new password
-    account.password_hash = deps.hash_password(new_password)
-
-    try:
-        await db.commit()
-        return {"message": "Đổi password thành công"}
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Đổi password thất bại: {str(e)}")

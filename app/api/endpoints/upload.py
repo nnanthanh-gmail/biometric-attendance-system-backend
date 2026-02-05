@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import os
@@ -19,6 +20,34 @@ PROFILE_IMAGES_DIR = UPLOAD_DIR / "profile_images"
 FINGERPRINT_IMAGES_DIR = UPLOAD_DIR / "fingerprint_images"
 PROFILE_IMAGES_DIR.mkdir(exist_ok=True)
 FINGERPRINT_IMAGES_DIR.mkdir(exist_ok=True)
+
+@router.get("/profile_images/{filename}")
+async def get_profile_image(filename: str):
+    """Lấy ảnh đại diện từ thư mục profile_images."""
+    file_path = PROFILE_IMAGES_DIR / filename
+    
+    # Security check - chỉ cho phép lấy file trong thư mục profile_images
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Ảnh không tồn tại")
+    
+    if not file_path.is_file():
+        raise HTTPException(status_code=400, detail="Đường dẫn không hợp lệ")
+    
+    return FileResponse(path=file_path, media_type="image/jpeg")
+
+@router.get("/fingerprint_images/{filename}")
+async def get_fingerprint_image(filename: str):
+    """Lấy ảnh vân tay từ thư mục fingerprint_images."""
+    file_path = FINGERPRINT_IMAGES_DIR / filename
+    
+    # Security check - chỉ cho phép lấy file trong thư mục fingerprint_images
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Ảnh không tồn tại")
+    
+    if not file_path.is_file():
+        raise HTTPException(status_code=400, detail="Đường dẫn không hợp lệ")
+    
+    return FileResponse(path=file_path, media_type="image/jpeg")
 
 @router.post("/student_profile_image/{student_id}")
 async def upload_student_profile_image(
@@ -62,13 +91,12 @@ async def upload_student_profile_image(
         raise HTTPException(status_code=500, detail=f"Lỗi lưu file: {str(e)}")
 
     # Update profile_image_url in database
-    file_url = f"/uploads/profile_images/{filename}"
-    student_profile.profile_image_url = file_url
+    student_profile.profile_image_url = filename
     await db.commit()
 
     return {
         "filename": filename,
-        "url": file_url,
+        "url": filename,
         "size": file_size,
         "message": "Upload ảnh đại diện sinh viên thành công"
     }
@@ -115,13 +143,12 @@ async def upload_lecturer_profile_image(
         raise HTTPException(status_code=500, detail=f"Lỗi lưu file: {str(e)}")
 
     # Update profile_image_url in database
-    file_url = f"/uploads/profile_images/{filename}"
-    lecturer_profile.profile_image_url = file_url
+    lecturer_profile.profile_image_url = filename
     await db.commit()
 
     return {
         "filename": filename,
-        "url": file_url,
+        "url": filename,
         "size": file_size,
         "message": "Upload ảnh đại diện giảng viên thành công"
     }

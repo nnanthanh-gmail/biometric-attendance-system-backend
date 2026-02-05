@@ -6,6 +6,7 @@ class ScheduleBase(BaseModel):
     """
     Lược đồ cơ sở cho lịch trình với môn học, phòng, giảng viên, lớp, ngày, kỳ và trạng thái mở.
     """
+    schedule_id: int
     subject_id: str
     room_id: str
     lecturer_id: str

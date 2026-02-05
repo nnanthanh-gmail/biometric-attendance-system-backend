@@ -6,7 +6,7 @@ from datetime import date
 from app.api import deps
 from app.db.session import get_db
 from app.models import Schedule, Subject, Room, User, ClassModel
-from app.schemas import ScheduleBase
+from app.schemas import ScheduleBase, ScheduleResponse
 
 router = APIRouter()
 
